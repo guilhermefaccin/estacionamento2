@@ -1,24 +1,21 @@
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
+
 from banco.sessao import obter_sessao
 from schemas.tarifas import (
-    TarifaCriar,
     TarifaAtualizar,
+    TarifaCriar,
     TarifaResposta,
 )
 from servicos.tarifas import (
-    cadastrar_tarifa,
-    listar_tarifas,
-    buscar_tarifa_por_id,
     atualizar_tarifa,
+    buscar_tarifa_por_id,
+    cadastrar_tarifa,
     desativar_tarifa,
+    listar_tarifas,
 )
 
-router = APIRouter(
-    prefix="/tarifas",
-    tags=["Tarifas"]
-)
+router = APIRouter(prefix="/tarifas", tags=["Tarifas"])
 
 
 @router.post("/", response_model=TarifaResposta, status_code=status.HTTP_201_CREATED)
@@ -38,7 +35,7 @@ def buscar(id_tarifa: int, db: Session = Depends(obter_sessao)):
     if tarifa is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Tarifa não encontrada ou inativa"
+            detail="Tarifa não encontrada ou inativa",
         )
 
     return tarifa
@@ -46,20 +43,17 @@ def buscar(id_tarifa: int, db: Session = Depends(obter_sessao)):
 
 @router.put("/{id_tarifa}", response_model=TarifaResposta)
 def atualizar(
-    id_tarifa: int,
-    dados: TarifaAtualizar,
-    db: Session = Depends(obter_sessao)
+    id_tarifa: int, dados: TarifaAtualizar, db: Session = Depends(obter_sessao)
 ):
     tarifa = buscar_tarifa_por_id(db, id_tarifa)
 
     if tarifa is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Tarifa não encontrada ou inativa"
+            detail="Tarifa não encontrada ou inativa",
         )
 
     return atualizar_tarifa(db, tarifa, dados)
-
 
 
 @router.patch("/{id_tarifa}/desativar", response_model=TarifaResposta)
@@ -69,7 +63,7 @@ def desativar(id_tarifa: int, db: Session = Depends(obter_sessao)):
     if tarifa is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Tarifa não encontrada ou inativa"
+            detail="Tarifa não encontrada ou inativa",
         )
 
     tarifa_desativada = desativar_tarifa(db, tarifa)
@@ -77,10 +71,9 @@ def desativar(id_tarifa: int, db: Session = Depends(obter_sessao)):
     if tarifa_desativada is None:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Não foi possível desativar a tarifa"
+            detail="Não foi possível desativar a tarifa",
         )
 
     return tarifa_desativada
-
 
     db: Session = Depends(obter_sessao)

@@ -1,4 +1,3 @@
-
 from servicos.seguranca import gerar_hash_senha, verificar_senha
 
 senha = "Teste@123"

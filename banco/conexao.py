@@ -1,9 +1,6 @@
-
 import os
 from pathlib import Path
 
-import mysql.connector
-from sshtunnel import SSHTunnelForwarder
 from dotenv import load_dotenv
 
 # Localiza o arquivo .env na raiz do projeto
@@ -16,6 +13,8 @@ def obter_conexao():
     Abre um túnel SSH e conecta ao MySQL.
     Retorna o túnel e a conexão para que ambos permaneçam ativos.
     """
+
+    import mysql.connector
 
     configuracao_ssh = {
         "host": os.getenv("SSH_HOST"),
@@ -35,7 +34,12 @@ def obter_conexao():
 
     tunel = None
 
+    if not configuracao_ssh["host"]:
+        return None, mysql.connector.connect(**configuracao_mysql)
+
     try:
+        from sshtunnel import SSHTunnelForwarder
+
         tunel = SSHTunnelForwarder(
             (configuracao_ssh["host"], configuracao_ssh["port"]),
             ssh_username=configuracao_ssh["username"],

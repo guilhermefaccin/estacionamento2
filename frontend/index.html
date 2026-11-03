@@ -5,26 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistema de Estacionamento</title>
   <link rel="stylesheet" href="/frontend/style.css">
-  <script src="/frontend/app.js"></script>
+  <script src="/frontend/app.js" defer></script>
 </head>
 <body>
-  <aside class="sidebar">
-    <div class="brand"><span class="brand-icon">P</span><div><strong>ParkControl</strong><small>Gestão de estacionamento</small></div></div>
-    <nav id="menu">
-      <button class="nav-link active" data-page="inicio">⌂ <span>Visão geral</span></button>
-      <p class="nav-label">OPERAÇÃO</p>
-      <button class="nav-link" data-page="estacionamentos">↔ <span>Entrada e saída</span></button>
-      <button class="nav-link" data-page="vagas">▦ <span>Vagas</span></button>
-      <p class="nav-label">CADASTROS</p>
-      <button class="nav-link" data-page="usuarios">♙ <span>Usuários</span></button>
-      <button class="nav-link" data-page="clientes">♧ <span>Clientes</span></button>
-      <button class="nav-link" data-page="veiculos">▣ <span>Veículos</span></button>
-      <button class="nav-link" data-page="marcas">◈ <span>Marcas</span></button>
-      <button class="nav-link" data-page="tarifas">＄ <span>Tarifas</span></button>
-      <button class="nav-link" data-page="contratos">▤ <span>Contratos mensais</span></button>
-    </nav>
-    <div class="sidebar-footer"><span class="status-dot"></span> API local <small id="api-status">verificando...</small></div>
-  </aside>
+
   
 <!-- TELA DE LOGIN -->
 <section id="login-screen" class="login-screen">
@@ -78,6 +62,23 @@
 
 <!-- PAINEL PRINCIPAL -->
 <div id="app-container" hidden>
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-icon">P</span><div><strong>ParkControl</strong><small>Gestão de estacionamento</small></div></div>
+    <nav id="menu">
+      <button class="nav-link active" data-page="inicio">⌂ <span>Visão geral</span></button>
+      <p class="nav-label">OPERAÇÃO</p>
+      <button class="nav-link" data-page="estacionamentos">↔ <span>Entrada e saída</span></button>
+      <button class="nav-link" data-page="vagas">▦ <span>Vagas</span></button>
+      <p class="nav-label">CADASTROS</p>
+      <button class="nav-link" data-page="usuarios">♙ <span>Usuários</span></button>
+      <button class="nav-link" data-page="clientes">♧ <span>Clientes</span></button>
+      <button class="nav-link" data-page="veiculos">▣ <span>Veículos</span></button>
+      <button class="nav-link" data-page="marcas">◈ <span>Marcas</span></button>
+      <button class="nav-link" data-page="tarifas">＄ <span>Tarifas</span></button>
+      <button class="nav-link" data-page="contratos">▤ <span>Contratos mensais</span></button>
+    </nav>
+    <div class="sidebar-footer"><span class="status-dot"></span> API local <small id="api-status">verificando...</small></div>
+  </aside>
 
   <main class="main">
     <header class="topbar">
@@ -143,6 +144,7 @@
           <label>Nome<input id="u-nome" maxlength="100" required></label>
           <label>CPF (11 dígitos)<input id="u-cpf" maxlength="11" inputmode="numeric" pattern="[0-9]{11}" required></label>
           <label>E-mail<input id="u-email" type="email" maxlength="80" required></label>
+          <label id="u-senha-label">Senha<input id="u-senha" type="password" minlength="8" maxlength="128" autocomplete="new-password" required></label>
           <div class="form-actions"><button class="btn btn-primary" type="submit">Salvar usuário</button><button class="btn btn-outline" type="button" id="u-cancelar" hidden>Cancelar</button></div>
         </form>
       </div>
@@ -234,5 +236,6 @@
 
     <footer>ParkControl · Sistema de Estacionamento</footer>
   </main>
+</div>
 </body>
 </html>

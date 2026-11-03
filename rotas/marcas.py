@@ -1,15 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from servicos.autenticacao import exigir_admin
+from sqlmodel import Session
+
 from banco.sessao import obter_sessao
-from schemas.marcas import MarcaCriar, MarcaAtualizar, MarcaResposta
+from schemas.marcas import MarcaAtualizar, MarcaCriar, MarcaResposta
+from servicos.autenticacao import exigir_admin
 from servicos.marcas import (
-    cadastrar_marca,
-    listar_marcas,
-    buscar_marca_por_id,
     atualizar_marca,
+    buscar_marca_por_id,
+    cadastrar_marca,
     desativar_marca,
+    listar_marcas,
 )
 
 router = APIRouter(prefix="/marcas", tags=["Marcas"])
@@ -19,24 +20,24 @@ router = APIRouter(prefix="/marcas", tags=["Marcas"])
 def criar_marca(
     dados: MarcaCriar,
     db: Session = Depends(obter_sessao),
-    usuario_logado = Depends(exigir_admin),
+    usuario_logado=Depends(exigir_admin),
 ):
     try:
-        return cadastrar_marca(dados, db)
+        return cadastrar_marca(dados, db, usuario_logado.id_usuario)
     except IntegrityError as erro:
         db.rollback()
         print("ERRO DE INTEGRIDADE AO CADASTRAR MARCA:", repr(erro.orig))
         raise HTTPException(
             status_code=409,
             detail="Nome inválido ou referência de usuário inválida.",
-        )
+        ) from None
     except SQLAlchemyError as erro:
         db.rollback()
         print("ERRO SQL AO CADASTRAR MARCA:", repr(erro))
         raise HTTPException(
             status_code=500,
             detail="Erro ao cadastrar marca. Confira o terminal.",
-        )
+        ) from None
 
 
 @router.get("/", response_model=list[MarcaResposta])
@@ -62,10 +63,10 @@ def editar_marca(
     id_marca: int,
     dados: MarcaAtualizar,
     db: Session = Depends(obter_sessao),
-    usuario_logado = Depends(exigir_admin),
+    usuario_logado=Depends(exigir_admin),
 ):
     try:
-        marca = atualizar_marca(id_marca, dados, db)
+        marca = atualizar_marca(id_marca, dados, db, usuario_logado.id_usuario)
 
         if marca is None:
             raise HTTPException(status_code=404, detail="Marca não encontrada.")
@@ -79,24 +80,24 @@ def editar_marca(
         raise HTTPException(
             status_code=409,
             detail="Nome inválido ou referência de usuário inválida.",
-        )
+        ) from None
     except SQLAlchemyError as erro:
         db.rollback()
         print("ERRO SQL AO EDITAR MARCA:", repr(erro))
         raise HTTPException(
             status_code=500,
             detail="Erro ao editar marca. Confira o terminal.",
-        )
+        ) from None
 
 
 @router.patch("/{id_marca}/desativar", response_model=MarcaResposta)
 def desativar_marca_rota(
     id_marca: int,
     db: Session = Depends(obter_sessao),
-    usuario_logado = Depends(exigir_admin),
+    usuario_logado=Depends(exigir_admin),
 ):
     try:
-        marca = desativar_marca(id_marca, db)
+        marca = desativar_marca(id_marca, db, usuario_logado.id_usuario)
 
         if marca is None:
             raise HTTPException(status_code=404, detail="Marca não encontrada.")
@@ -110,4 +111,4 @@ def desativar_marca_rota(
         raise HTTPException(
             status_code=500,
             detail="Erro ao desativar marca. Confira o terminal.",
-        )
+        ) from None

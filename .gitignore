@@ -1,2 +1,10 @@
 .env
 __pycache__/
+.venv/
+.logs/
+.pytest_cache/
+.ruff_cache/
+.jwt_secret
+*.db
+*.db-*
+pytest-cache-files-*/

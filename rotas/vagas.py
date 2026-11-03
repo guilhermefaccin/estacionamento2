@@ -1,16 +1,15 @@
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlmodel import Session
 
 from banco.sessao import obter_sessao
-from schemas.vagas import VagaCriar, VagaAtualizar, VagaResposta
+from schemas.vagas import VagaAtualizar, VagaCriar, VagaResposta
 from servicos.vagas import (
-    cadastrar_vaga,
-    listar_vagas,
-    buscar_vaga_por_id,
     atualizar_vaga,
+    buscar_vaga_por_id,
+    cadastrar_vaga,
     desativar_vaga,
+    listar_vagas,
 )
 
 router = APIRouter(prefix="/vagas", tags=["Vagas"])
@@ -23,12 +22,11 @@ def criar(dados: VagaCriar, db: Session = Depends(obter_sessao)):
     except IntegrityError:
         db.rollback()
         raise HTTPException(
-            status_code=409,
-            detail="Já existe uma vaga com esse número."
-        )
+            status_code=409, detail="Já existe uma vaga com esse número."
+        ) from None
     except SQLAlchemyError:
         db.rollback()
-        raise HTTPException(status_code=500, detail="Erro ao cadastrar vaga.")
+        raise HTTPException(status_code=500, detail="Erro ao cadastrar vaga.") from None
 
 
 @router.get("/", response_model=list[VagaResposta])
@@ -47,11 +45,7 @@ def consultar(id_vaga: int, db: Session = Depends(obter_sessao)):
 
 
 @router.put("/{id_vaga}", response_model=VagaResposta)
-def editar(
-    id_vaga: int,
-    dados: VagaAtualizar,
-    db: Session = Depends(obter_sessao)
-):
+def editar(id_vaga: int, dados: VagaAtualizar, db: Session = Depends(obter_sessao)):
     try:
         vaga = atualizar_vaga(id_vaga, dados, db)
 
@@ -62,12 +56,11 @@ def editar(
     except IntegrityError:
         db.rollback()
         raise HTTPException(
-            status_code=409,
-            detail="Já existe uma vaga com esse número."
-        )
+            status_code=409, detail="Já existe uma vaga com esse número."
+        ) from None
     except SQLAlchemyError:
         db.rollback()
-        raise HTTPException(status_code=500, detail="Erro ao editar vaga.")
+        raise HTTPException(status_code=500, detail="Erro ao editar vaga.") from None
 
 
 @router.patch("/{id_vaga}/desativar", response_model=VagaResposta)
@@ -81,4 +74,4 @@ def desativar(id_vaga: int, db: Session = Depends(obter_sessao)):
         return vaga
     except SQLAlchemyError:
         db.rollback()
-        raise HTTPException(status_code=500, detail="Erro ao desativar vaga.")
+        raise HTTPException(status_code=500, detail="Erro ao desativar vaga.") from None

@@ -1,9 +1,11 @@
-
 from getpass import getpass
-from sqlmodel import Session, select
 
-from banco.sessao import obter_sessao
+from pydantic import ValidationError
+from sqlmodel import select
+
+from banco.sessao import inicializar_banco, obter_sessao
 from entidades.models import Usuario
+from schemas.usuario import UsuarioCriar
 from servicos.seguranca import gerar_hash_senha
 
 
@@ -27,15 +29,19 @@ def criar_admin():
         print("A senha deve ter pelo menos 8 caracteres.")
         return
 
+    try:
+        UsuarioCriar(nome=nome, cpf=cpf, email=email, senha=senha)
+    except ValidationError as erro:
+        print(f"Dados inválidos: {erro}")
+        return
+
+    inicializar_banco()
     gerador = obter_sessao()
     db = next(gerador)
 
     try:
         existente = db.exec(
-            select(Usuario).where(
-                (Usuario.cpf == cpf) |
-                (Usuario.email == email)
-            )
+            select(Usuario).where((Usuario.cpf == cpf) | (Usuario.email == email))
         ).first()
 
         if existente:
@@ -48,7 +54,7 @@ def criar_admin():
             email=email,
             senha=gerar_hash_senha(senha),
             perfil="ADMIN",
-            ativo=True
+            ativo=True,
         )
 
         db.add(admin)

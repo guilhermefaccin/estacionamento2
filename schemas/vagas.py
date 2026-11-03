@@ -1,4 +1,3 @@
-
 from sqlmodel import SQLModel
 
 from entidades.models import StatusVaga, TipoUsoVaga, TipoVaga

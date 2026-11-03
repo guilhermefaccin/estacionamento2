@@ -1,8 +1,7 @@
-
 from datetime import date
 from decimal import Decimal
 
-from sqlmodel import SQLModel, Field
+from sqlmodel import Field, SQLModel
 
 from entidades.models import StatusContrato
 
@@ -16,11 +15,7 @@ class ContratoMensalCriar(SQLModel):
     data_fim: date | None = None
 
     dia_vencimento: int = Field(ge=1, le=31)
-    valor_mensal: Decimal = Field(
-        gt=0,
-        max_digits=10,
-        decimal_places=2
-    )
+    valor_mensal: Decimal = Field(gt=0, max_digits=10, decimal_places=2)
 
     status: StatusContrato = StatusContrato.ATIVO
 
@@ -35,10 +30,7 @@ class ContratoMensalAtualizar(SQLModel):
 
     dia_vencimento: int | None = Field(default=None, ge=1, le=31)
     valor_mensal: Decimal | None = Field(
-        default=None,
-        gt=0,
-        max_digits=10,
-        decimal_places=2
+        default=None, gt=0, max_digits=10, decimal_places=2
     )
 
     status: StatusContrato | None = None

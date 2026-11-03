@@ -1,14 +1,14 @@
 from datetime import datetime
 
-from sqlmodel import SQLModel
+from sqlmodel import Field, SQLModel
 
 
 class MarcaCriar(SQLModel):
-    nome: str
+    nome: str = Field(min_length=1, max_length=100)
 
 
 class MarcaAtualizar(SQLModel):
-    nome: str
+    nome: str = Field(min_length=1, max_length=100)
 
 
 class MarcaResposta(SQLModel):

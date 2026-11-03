@@ -1,13 +1,13 @@
 from sqlmodel import Session, select
 
 from entidades.models import Marca
-from schemas.marcas import MarcaCriar, MarcaAtualizar
+from schemas.marcas import MarcaAtualizar, MarcaCriar
 
 
-def cadastrar_marca(dados: MarcaCriar, db: Session) -> Marca:
+def cadastrar_marca(dados: MarcaCriar, db: Session, id_usuario: int) -> Marca:
     marca = Marca(
         nome=dados.nome,
-        id_usuario_cadastro=1,
+        id_usuario_cadastro=id_usuario,
         ativo=True,
     )
 
@@ -35,6 +35,7 @@ def atualizar_marca(
     id_marca: int,
     dados: MarcaAtualizar,
     db: Session,
+    id_usuario: int,
 ) -> Marca | None:
     marca = buscar_marca_por_id(id_marca, db)
 
@@ -42,7 +43,7 @@ def atualizar_marca(
         return None
 
     marca.nome = dados.nome
-    marca.id_usuario_alteracao = 1
+    marca.id_usuario_alteracao = id_usuario
 
     db.add(marca)
     db.commit()
@@ -54,6 +55,7 @@ def atualizar_marca(
 def desativar_marca(
     id_marca: int,
     db: Session,
+    id_usuario: int,
 ) -> Marca | None:
     marca = buscar_marca_por_id(id_marca, db)
 
@@ -61,7 +63,7 @@ def desativar_marca(
         return None
 
     marca.ativo = False
-    marca.id_usuario_alteracao = 1
+    marca.id_usuario_alteracao = id_usuario
 
     db.add(marca)
     db.commit()

@@ -1,4 +1,3 @@
-
 from datetime import datetime
 from decimal import Decimal
 from math import ceil
@@ -8,13 +7,13 @@ from sqlmodel import Session, select
 
 from entidades.models import (
     Estacionamento,
-    Veiculo,
-    Vaga,
-    Usuario,
-    Tarifa,
     ModalidadeTarifa,
-    StatusVaga,
     StatusEstacionamento,
+    StatusVaga,
+    Tarifa,
+    Usuario,
+    Vaga,
+    Veiculo,
 )
 from schemas.estacionamentos import EstacionamentoEntrada
 
@@ -24,7 +23,9 @@ def registrar_entrada(
     dados: EstacionamentoEntrada,
     id_usuario: int,
 ) -> Estacionamento:
-    veiculo = db.get(Veiculo, dados.id_veiculo)
+    veiculo = db.exec(
+        select(Veiculo).where(Veiculo.id_veiculo == dados.id_veiculo).with_for_update()
+    ).first()
 
     if veiculo is None or not veiculo.ativo:
         raise HTTPException(
@@ -32,7 +33,9 @@ def registrar_entrada(
             detail="Veículo não encontrado ou inativo",
         )
 
-    vaga = db.get(Vaga, dados.id_vaga)
+    vaga = db.exec(
+        select(Vaga).where(Vaga.id_vaga == dados.id_vaga).with_for_update()
+    ).first()
 
     if vaga is None or not vaga.ativo:
         raise HTTPException(
@@ -65,6 +68,29 @@ def registrar_entrada(
             detail="Este veículo já possui um estacionamento aberto",
         )
 
+    entrada = datetime.now()
+    tarifa = db.get(Tarifa, dados.id_tarifa) if dados.id_tarifa else None
+    if tarifa is None or not tarifa.ativo:
+        raise HTTPException(
+            status_code=400,
+            detail="Selecione uma tarifa ativa para registrar a entrada",
+        )
+    if tarifa.modalidade != ModalidadeTarifa.HORISTA or not tarifa.intervalo_minutos:
+        raise HTTPException(
+            status_code=400,
+            detail="A entrada rotativa exige tarifa horista com intervalo válido",
+        )
+    if entrada < tarifa.data_inicio_vigencia or (
+        tarifa.data_fim_vigencia is not None and entrada > tarifa.data_fim_vigencia
+    ):
+        raise HTTPException(
+            status_code=400, detail="A tarifa não está vigente para esta entrada"
+        )
+    if dados.id_contrato is not None:
+        raise HTTPException(
+            status_code=400, detail="A entrada rotativa não utiliza contrato mensal"
+        )
+
     estacionamento = Estacionamento(
         id_veiculo=dados.id_veiculo,
         id_vaga=dados.id_vaga,
@@ -72,6 +98,7 @@ def registrar_entrada(
         id_contrato=dados.id_contrato,
         id_usuario_entrada=id_usuario,
         status=StatusEstacionamento.ABERTO,
+        data_hora_entrada=entrada,
     )
 
     vaga.status = StatusVaga.OCUPADA
@@ -104,7 +131,11 @@ def registrar_saida(
     id_usuario: int,
 ) -> Estacionamento:
     # Busca o estacionamento
-    estacionamento = db.get(Estacionamento, id_estacionamento)
+    estacionamento = db.exec(
+        select(Estacionamento)
+        .where(Estacionamento.id_estacionamento == id_estacionamento)
+        .with_for_update()
+    ).first()
 
     if estacionamento is None:
         raise HTTPException(
@@ -166,22 +197,13 @@ def registrar_saida(
             detail="A saída automática por hora exige uma tarifa horista",
         )
 
-    if not tarifa.ativo:
-        raise HTTPException(
-            status_code=400,
-            detail="A tarifa associada está inativa",
-        )
-
     if entrada < tarifa.data_inicio_vigencia:
         raise HTTPException(
             status_code=400,
             detail="A tarifa ainda não estava vigente na entrada",
         )
 
-    if (
-        tarifa.data_fim_vigencia is not None
-        and entrada > tarifa.data_fim_vigencia
-    ):
+    if tarifa.data_fim_vigencia is not None and entrada > tarifa.data_fim_vigencia:
         raise HTTPException(
             status_code=400,
             detail="A tarifa não estava vigente na entrada",
@@ -206,9 +228,7 @@ def registrar_saida(
         ceil(segundos / segundos_por_intervalo),
     )
 
-    valor = (
-        tarifa.valor * Decimal(quantidade_intervalos)
-    ).quantize(Decimal("0.01"))
+    valor = (tarifa.valor * Decimal(quantidade_intervalos)).quantize(Decimal("0.01"))
 
     # Atualiza a saída e libera a vaga
     estacionamento.data_hora_saida = saida

@@ -1,19 +1,19 @@
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 
 from banco.sessao import obter_sessao
 from schemas.contratos_mensais import (
-    ContratoMensalCriar,
     ContratoMensalAtualizar,
+    ContratoMensalCriar,
     ContratoMensalResposta,
 )
+from servicos.autenticacao import obter_usuario_logado
 from servicos.contratos_mensais import (
-    cadastrar_contrato,
-    listar_contratos,
-    buscar_contrato_por_id,
     atualizar_contrato,
+    buscar_contrato_por_id,
+    cadastrar_contrato,
     desativar_contrato,
+    listar_contratos,
 )
 
 router = APIRouter(
@@ -29,10 +29,10 @@ router = APIRouter(
 )
 def criar(
     dados: ContratoMensalCriar,
-    id_usuario: int,
+    usuario_logado=Depends(obter_usuario_logado),
     db: Session = Depends(obter_sessao),
 ):
-    return cadastrar_contrato(db, dados, id_usuario)
+    return cadastrar_contrato(db, dados, usuario_logado.id_usuario)
 
 
 @router.get(
@@ -69,7 +69,7 @@ def buscar(
 def atualizar(
     id_contrato: int,
     dados: ContratoMensalAtualizar,
-    id_usuario: int,
+    usuario_logado=Depends(obter_usuario_logado),
     db: Session = Depends(obter_sessao),
 ):
     contrato = buscar_contrato_por_id(db, id_contrato)
@@ -80,7 +80,7 @@ def atualizar(
             detail="Contrato não encontrado ou encerrado",
         )
 
-    return atualizar_contrato(db, contrato, dados, id_usuario)
+    return atualizar_contrato(db, contrato, dados, usuario_logado.id_usuario)
 
 
 @router.patch(
@@ -89,7 +89,7 @@ def atualizar(
 )
 def encerrar(
     id_contrato: int,
-    id_usuario: int,
+    usuario_logado=Depends(obter_usuario_logado),
     db: Session = Depends(obter_sessao),
 ):
     contrato = buscar_contrato_por_id(db, id_contrato)
@@ -100,4 +100,4 @@ def encerrar(
             detail="Contrato não encontrado ou encerrado",
         )
 
-    return desativar_contrato(db, contrato, id_usuario)
+    return desativar_contrato(db, contrato, usuario_logado.id_usuario)

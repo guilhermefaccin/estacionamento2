@@ -1,4 +1,3 @@
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 
@@ -7,11 +6,12 @@ from schemas.estacionamentos import (
     EstacionamentoEntrada,
     EstacionamentoResposta,
 )
+from servicos.autenticacao import obter_usuario_logado
 from servicos.estacionamentos import (
-    registrar_entrada,
-    listar_abertos,
     buscar_por_id,
-    registrar_saida
+    listar_abertos,
+    registrar_entrada,
+    registrar_saida,
 )
 
 router = APIRouter(
@@ -27,10 +27,10 @@ router = APIRouter(
 )
 def entrada(
     dados: EstacionamentoEntrada,
-    id_usuario: int,
+    usuario_logado=Depends(obter_usuario_logado),
     db: Session = Depends(obter_sessao),
 ):
-    return registrar_entrada(db, dados, id_usuario)
+    return registrar_entrada(db, dados, usuario_logado.id_usuario)
 
 
 @router.get(
@@ -63,11 +63,11 @@ def buscar(
 @router.patch("/{id_estacionamento}/saida", response_model=EstacionamentoResposta)
 def saida(
     id_estacionamento: int,
-    id_usuario: int,
+    usuario_logado=Depends(obter_usuario_logado),
     db: Session = Depends(obter_sessao),
 ):
     return registrar_saida(
         db,
         id_estacionamento,
-        id_usuario,
+        usuario_logado.id_usuario,
     )

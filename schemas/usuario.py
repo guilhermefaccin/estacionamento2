@@ -1,5 +1,4 @@
-
-from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class UsuarioCriar(BaseModel):

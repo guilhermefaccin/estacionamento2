@@ -1,0 +1,29 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Iniciar ParkControl",
+            "type": "process",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "args": ["${workspaceFolder}/iniciar.py"],
+            "options": { "cwd": "${workspaceFolder}" },
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "parkcontrol",
+                "pattern": {
+                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "message": 4
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "Started server process",
+                    "endsPattern": "Uvicorn running on|ParkControl pronto em"
+                }
+            },
+            "presentation": { "reveal": "silent", "panel": "dedicated" }
+        }
+    ]
+}

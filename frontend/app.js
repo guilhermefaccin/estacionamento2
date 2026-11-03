@@ -1,5 +1,5 @@
 
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = window.location.origin;
 
 // Dados do usuário autenticado
 const auth = {
@@ -132,8 +132,7 @@ $("form-login").addEventListener("submit", async event => {
     await boot();
 
   } catch (error) {
-    auth.token = null;
-    auth.usuario = null;
+    logout();
 
     erro.textContent = error.message;
     erro.hidden = false;
@@ -194,6 +193,10 @@ function logout() {
   // Limpa os dados de autenticação
   auth.token = null;
   auth.usuario = null;
+  state.data = {};
+  state.editing = {};
+  document.querySelectorAll("form").forEach(form => form.reset());
+  document.querySelectorAll("tbody").forEach(body => body.replaceChildren());
 
   // Remove a sessão armazenada
   sessionStorage.removeItem("token");
@@ -259,6 +262,13 @@ async function api(path, options = {}) {
     ...options,
     headers
   });
+
+  if (response.status === 401) {
+    logout();
+    $("login-erro").textContent = "Sua sessão expirou. Entre novamente.";
+    $("login-erro").hidden = false;
+    throw new Error("Sua sessão expirou. Entre novamente.");
+  }
 
   if (!response.ok) {
     let message = `Erro HTTP ${response.status}`;
@@ -331,6 +341,7 @@ function badge(value) {
 }
 
 function actions(id, module) {
+  if (module === "marcas" && auth.usuario?.perfil !== "ADMIN") return "";
   return `
     <button class="btn btn-small btn-outline"
       data-edit="${module}" data-id="${esc(id)}">
@@ -350,6 +361,7 @@ function actions(id, module) {
 function navigate(page) {
   if (!titles[page]) return;
 
+  if (page === "usuarios" && auth.usuario?.perfil !== "ADMIN") return;
   state.page = page;
 
   document.querySelectorAll(".page").forEach(element => {
@@ -435,7 +447,8 @@ const configs = {
     payload: () => ({
       nome: $("u-nome").value.trim(),
       cpf: $("u-cpf").value.trim(),
-      email: $("u-email").value.trim()
+      email: $("u-email").value.trim(),
+      ...(!state.editing.usuarios ? { senha: $("u-senha").value } : {})
     }),
 
     makeEdit: row => {
@@ -457,10 +470,10 @@ const configs = {
 
     payload: () => ({
       nome: $("c-nome").value.trim(),
-      cpf_cnpj: $("c-documento").value.trim(),
+      cpf_cnpj: $("c-documento").value.trim() || null,
       telefone: $("c-telefone").value.trim() || null,
       email: $("c-email").value.trim() || null,
-      id_usuario_cadastro: 1
+      id_usuario_cadastro: auth.usuario.id_usuario
     }),
 
     makeEdit: row => {
@@ -487,7 +500,7 @@ const configs = {
       placa: $("v-placa").value.trim().toUpperCase(),
       modelo: $("v-modelo").value.trim(),
       cor: $("v-cor").value.trim() || null,
-      id_usuario_cadastro: 1
+      id_usuario_cadastro: auth.usuario.id_usuario
     }),
 
     makeEdit: row => {
@@ -511,7 +524,7 @@ const configs = {
 
     payload: () => ({
       nome: $("m-nome").value.trim(),
-      id_usuario_cadastro: 1
+      id_usuario_cadastro: auth.usuario.id_usuario
     }),
 
     makeEdit: row => {
@@ -607,11 +620,16 @@ const configs = {
       data_fim: $("ct-fim").value || null,
       dia_vencimento: Number($("ct-vencimento").value),
       valor_mensal: Number($("ct-valor").value),
-      id_usuario_cadastro: 1
+      id_usuario_cadastro: auth.usuario.id_usuario
     }),
 
     makeEdit: row => {
       $("ct-cliente").value = row.id_cliente || "";
+      const vagas = $("ct-vaga");
+      if (row.id_vaga && ![...vagas.options].some(option => Number(option.value) === row.id_vaga)) {
+        const vaga = (state.data.vagas || []).find(item => item.id_vaga === row.id_vaga);
+        vagas.add(new Option(vaga?.numero_vaga || `Vaga #${row.id_vaga}`, row.id_vaga));
+      }
       $("ct-vaga").value = row.id_vaga || "";
       $("ct-tarifa").value = row.id_tarifa || "";
       $("ct-inicio").value = String(row.data_inicio || "").slice(0, 10);
@@ -632,6 +650,11 @@ function resetForm(module) {
 
   $(config.form).reset();
   state.editing[module] = null;
+  if (module === "usuarios") {
+    $("u-senha-label").hidden = false;
+    $("u-senha").disabled = false;
+    $("u-senha").required = true;
+  }
 
   const names = {
     contratos: "contrato mensal",
@@ -667,7 +690,7 @@ function resetForm(module) {
   };
 
   if (userIds[module]) {
-    $(userIds[module]).value = "1";
+    $(userIds[module]).value = auth.usuario.id_usuario;
   }
 }
 
@@ -804,19 +827,7 @@ Object.entries(configs).forEach(([module, config]) => {
       const id = state.editing[module];
       const payload = config.payload();
 
-      let url;
-
-      if (module === "contratos") {
-        const idUsuario = "1";
-
-        url = id
-          ? `${config.path}/${id}?id_usuario=${idUsuario}`
-          : `${config.path}?id_usuario=${idUsuario}`;
-      } else {
-        url = id
-          ? `${config.path}/${id}`
-          : config.path;
-      }
+      const url = id ? `${config.path}/${id}` : config.path;
 
       await api(url, {
         method: id ? "PUT" : "POST",
@@ -880,6 +891,12 @@ document.addEventListener("click", async event => {
     if (!row) return;
 
     state.editing[module] = row[config.id];
+    if (module === "usuarios") {
+      $("u-senha-label").hidden = true;
+      $("u-senha").disabled = true;
+      $("u-senha").required = false;
+      $("u-senha").value = "";
+    }
 
     config.makeEdit(row);
 
@@ -928,7 +945,7 @@ document.addEventListener("click", async event => {
       let url;
 
       if (module === "contratos") {
-        url = `${config.path}/${disable.dataset.id}/encerrar?id_usuario=1`;
+        url = `${config.path}/${disable.dataset.id}/encerrar`;
       } else {
         url = `${config.path}/${disable.dataset.id}/desativar`;
       }
@@ -957,11 +974,9 @@ document.addEventListener("click", async event => {
 // LISTAS DE SELEÇÃO
 // ========================================
 
-async function loadSelect(id, path, labelFn, placeholder = "Selecione") {
+async function loadSelect(id, path, labelFn, placeholder = "Selecione", filter = () => true) {
   const element = $(id);
   if (!element) return;
-
-  const previous = element.value;
 
   try {
     let rows = await api(path);
@@ -970,9 +985,15 @@ async function loadSelect(id, path, labelFn, placeholder = "Selecione") {
       rows = rows?.items || [];
     }
 
+    const module = Object.keys(API).find(key => API[key] === path);
+    if (module) state.data[module] = rows;
+
+    // Preserva inclusive uma seleção feita enquanto a requisição estava em andamento.
+    const previous = element.value;
+
     element.innerHTML =
       `<option value="">${placeholder}</option>` +
-      rows.map(row => {
+      rows.filter(filter).map(row => {
         const idValue =
           row.id_veiculo ??
           row.id_cliente ??
@@ -1011,13 +1032,16 @@ async function loadSelects() {
       "entrada-vaga",
       API.vagas,
       row => `${row.numero_vaga} (${row.status})`,
-      "Selecione uma vaga"
+      "Selecione uma vaga",
+      row => row.status === "livre" && row.tipo_uso === "rotativa"
     ),
 
     loadSelect(
       "entrada-tarifa",
       API.tarifas,
-      row => `${row.nome} — ${money(row.valor)}`
+      row => `${row.nome} — ${money(row.valor)}`,
+      "Selecione",
+      row => row.modalidade === "horista"
     ),
 
     loadSelect(
@@ -1042,60 +1066,20 @@ async function loadSelects() {
       "ct-vaga",
       API.vagas,
       row => row.numero_vaga,
-      "Sem vaga definida"
+      "Sem vaga definida",
+      row => row.tipo_uso === "mensalista" &&
+        (row.status === "livre" || String(row.id_vaga) === $("ct-vaga").value)
     ),
 
     loadSelect(
       "ct-tarifa",
       API.tarifas,
-      row => `${row.nome} — ${money(row.valor)}`
+      row => `${row.nome} — ${money(row.valor)}`,
+      "Selecione",
+      row => row.modalidade === "mensalista"
     )
   ]);
 
-  const vaga = $("entrada-vaga");
-
-  if (vaga) {
-    [...vaga.options].forEach(option => {
-      if (!option.value) return;
-
-      const row = (state.data.vagas || []).find(
-        item => String(item.id_vaga) === option.value
-      );
-
-      if (
-        row &&
-        (
-          row.status !== "livre" ||
-          row.tipo_uso !== "rotativa" ||
-          row.ativo === false
-        )
-      ) {
-        option.remove();
-      }
-    });
-  }
-
-  const tarifa = $("entrada-tarifa");
-
-  if (tarifa) {
-    [...tarifa.options].forEach(option => {
-      if (!option.value) return;
-
-      const row = (state.data.tarifas || []).find(
-        item => String(item.id_tarifa) === option.value
-      );
-
-      if (
-        row &&
-        (
-          row.modalidade !== "horista" ||
-          row.ativo === false
-        )
-      ) {
-        option.remove();
-      }
-    });
-  }
 }
 
 // ========================================
@@ -1113,7 +1097,7 @@ $("form-entrada").addEventListener("submit", async event => {
     };
 
     await api(
-      `${API.estacionamentos}/entrada?id_usuario=1`,
+      `${API.estacionamentos}/entrada`,
       {
         method: "POST",
         body: JSON.stringify(body)
@@ -1123,11 +1107,11 @@ $("form-entrada").addEventListener("submit", async event => {
     showAlert("Entrada registrada com sucesso.");
 
     $("form-entrada").reset();
-    $("entrada-usuario").value = "1";
+    $("entrada-usuario").value = auth.usuario.id_usuario;
 
     await loadParking();
-    await loadSelects();
     await loadModule("vagas");
+    await loadSelects();
 
   } catch (error) {
     showAlert(error.message, true);
@@ -1222,7 +1206,7 @@ async function loadParking() {
 
         try {
           const result = await api(
-            `${API.estacionamentos}/${row.id_estacionamento}/saida?id_usuario=1`,
+            `${API.estacionamentos}/${row.id_estacionamento}/saida`,
             { method: "PATCH" }
           );
 
@@ -1231,8 +1215,8 @@ async function loadParking() {
           );
 
           await loadParking();
-          await loadSelects();
           await loadModule("vagas");
+          await loadSelects();
 
         } catch (error) {
           showAlert(error.message, true);
@@ -1277,7 +1261,7 @@ async function loadDashboard() {
   const [open, spaces, users, vehicles] = await Promise.all([
     read(`${API.estacionamentos}/abertos`),
     read(API.vagas),
-    read(API.usuarios),
+    auth.usuario?.perfil === "ADMIN" ? read(API.usuarios) : Promise.resolve("—"),
     read(API.veiculos)
   ]);
 
@@ -1334,7 +1318,7 @@ async function checkApi() {
     $("api-status").textContent = "online";
 
   } catch {
-    $("api-status").textContent = "API configurada";
+    $("api-status").textContent = "offline";
   }
 }
 
@@ -1343,10 +1327,24 @@ async function checkApi() {
 // ========================================
 
 async function boot() {
+  state.data = {};
+  Object.keys(configs).forEach(resetForm);
+  $("entrada-usuario").value = auth.usuario.id_usuario;
+  const admin = auth.usuario.perfil === "ADMIN";
+  document.querySelector('[data-page="usuarios"]').hidden = !admin;
+  $("form-marcas").hidden = !admin;
+  state.page = "inicio";
+  document.querySelectorAll(".page").forEach(element => {
+    element.classList.toggle("active", element.id === "page-inicio");
+  });
+  document.querySelectorAll(".nav-link").forEach(button => {
+    button.classList.toggle("active", button.dataset.page === "inicio");
+  });
+  $("page-title").textContent = titles.inicio;
   await checkApi();
   await loadDashboard();
   await loadSelects();
-  await loadModule("usuarios");
+  if (admin) await loadModule("usuarios");
 }
 
 // Só abre o painel quando existir uma sessão válida
